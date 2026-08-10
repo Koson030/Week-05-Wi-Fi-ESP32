@@ -368,26 +368,31 @@ void app_main(void) {
 
 | ข้อการทดลอง | สถานการณ์ทดสอบ | Event สุดท้ายที่ได้รับ | ผลลัพธ์ (Passed/Failed) | Reason Code (Decimal / Hex) | คำอธิบาย Reason Code |
 | :---: | :--- | :---: | :---: | :---: | :--- |
-| **5.2.1** | SSID และ Password ถูกต้อง | | | | |
-| **5.2.2** | ระบุ SSID ผิด (ไม่มีในระบบ) | | | | |
-| **5.2.3** | ระบุ SSID ถูกต้อง แต่ Password ผิด | | | | |
+| **5.2.1** | SSID และ Password ถูกต้อง |IP_EVENT_STA_GOT_IP | Passed|- | -|
+| **5.2.2** | ระบุ SSID ผิด (ไม่มีในระบบ) |WIFI_EVENT_STA_DISCONNECTED |Failed | 8 / 0x08|OTHER_DISCONNECT_REASON |
+| **5.2.3** | ระบุ SSID ถูกต้อง แต่ Password ผิด |WIFI_EVENT_STA_DISCONNECTED |Failed |2 / 0x02 | WIFI_REASON_AUTH_EXPIRE|
 
 ### 6.2 บันทึกข้อมูลเครือข่ายจากการเชื่อมต่อสำเร็จ (ข้อ 5.2.1)
 
 | พารามิเตอร์เครือข่าย | ค่าที่ได้รับจริงจาก DHCP |
 | :--- | :--- |
-| **SSID** | |
-| **BSSID (MAC Address)** | |
-| **Channel** | |
-| **IP Address** | |
-| **Subnet Mask** | |
-| **Default Gateway** | |
+| **SSID** | iPhone_Koson|
+| **BSSID (MAC Address)** |7A:D9:A1:8B:1D:7A |
+| **Channel** |12 |
+| **IP Address** | 172.20.10.3|
+| **Subnet Mask** | 255.255.255.240|
+| **Default Gateway** |172.20.10.1 |
 
 ---
 
 ## 7. คำถามท้ายการทดลอง (Post-Lab Questions)
 
-1. เหตุใดการระบุ SSID ผิด (ข้อ 5.2.2) จึงส่งผลให้เกิด Disconnect Event ด้วย Reason Code `201` (`WIFI_REASON_NO_AP_FOUND`) ตั้งแต่เฟส Scan?
-2. เหตุใดการพิมพ์ Password ผิด (ข้อ 5.2.3) จึงผ่านเฟส Auth และ Assoc มาได้ แต่มาล้มเหลวในเฟส 4-Way Handshake (Reason Code `15` หรือ `204`)?
-3. ลำดับการเกิด Event ระหว่าง **`WIFI_EVENT_STA_CONNECTED`** กับ **`IP_EVENT_STA_GOT_IP`** Event ใดเกิดขึ้นก่อนกัน และมีความหมายทางกายภาพของ Layer Network ต่างกันอย่างไร?
-4. สมาชิกตัวแปร `reason` ในโครงสร้าง `wifi_event_sta_disconnected_t` มีประโยชน์อย่างไรต่อการออกแบบระบบค้นหาสาเหตุและกู้คืนการเชื่อมต่อ (Auto-Reconnection Mechanism) ในแอปพลิเคชัน IoT?
+1. เหตุใดการระบุ SSID ผิด (ข้อ 5.2.2) จึงส่งผลให้เกิด Disconnect Event ด้วย Reason Code `201` (`WIFI_REASON_NO_AP_FOUND`) ตั้งแต่เฟส Scan?<br>
+    ตอบ ESP32 ต้องสแกนหาชื่อ Wi-Fi ให้เจอก่อนถึงจะส่งสัญญาณไปขอต่อได้ พอสแกนทุกช่องแล้วหาชื่อที่กรอกไว้ไม่เจอ มันเลยยกเลิกและตัดการทำงานทันทีตั้งแต่แรก
+2. เหตุใดการพิมพ์ Password ผิด (ข้อ 5.2.3) จึงผ่านเฟส Auth และ Assoc มาได้ แต่มาล้มเหลวในเฟส 4-Way Handshake (Reason Code `15` หรือ `204`)?<br>
+    ตอบ สองขั้นตอนแรกเหมือนแค่ทักทายและตกลงสเปกอุปกรณ์กันเฉย ๆ ยังไม่ได้เช็กรหัสผ่าน แต่ช่วง 4-Way Handshake คือตอนเอารหัสมาคำนวณกุญแจเข้ารหัส พอกรอกรหัสผิด กุญแจเลยไม่ตรงกัน คุยกันต่อไม่ได้
+3. ลำดับการเกิด Event ระหว่าง **`WIFI_EVENT_STA_CONNECTED`** กับ **`IP_EVENT_STA_GOT_IP`** Event ใดเกิดขึ้นก่อนกัน และมีความหมายทางกายภาพของ Layer Network ต่างกันอย่างไร?<br>
+    ตอบ WIFI_EVENT_STA_CONNECTED (เกิดก่อน - Layer 2): ตัวบอร์ดเกาะคลื่นวิทยุ Wi-Fi ติดแล้ว แต่ยังส่งข้อมูลออกอินเทอร์เน็ตไม่ได้ ส่วน IP_EVENT_STA_GOT_IP (เกิดทีหลัง - Layer 3): ได้รับ IP Address จากเราเตอร์เรียบร้อย พร้อมส่งข้อมูลไป Cloud หรือเซิร์ฟเวอร์ได้จริง
+4. สมาชิกตัวแปร `reason` ในโครงสร้าง `wifi_event_sta_disconnected_t` มีประโยชน์อย่างไรต่อการออกแบบระบบค้นหาสาเหตุและกู้คืนการเชื่อมต่อ (Auto-Reconnection Mechanism) ในแอปพลิเคชัน IoT?<br>
+    ตอบ อาไว้สั่งให้ระบบแก้ปัญหาอย่างฉลาด เช่น ถ้าหลุดเพราะสัญญาณอ่อน ให้ลองกดเชื่อมต่อใหม่เรื่อย ๆ แต่ถ้าหลุดเพราะรหัสผิด ให้หยุดกดต่อใหม่ แล้วสลับไปเปิดโหมดรอให้ผู้ใช้กรอกรหัสใหม่ทันที
+
